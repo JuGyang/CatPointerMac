@@ -22,6 +22,7 @@
 - Uses the original HappyCadogt cat animation instead of a redrawn approximation.
 - Offers five cursor sizes and four friendly animation-speed levels: Slow, Medium, Fast, and Extreme.
 - Applies settings immediately while avoiding unnecessary cursor rebuilds.
+- Ships in a polished drag-to-install DMG with a native Applications alias.
 - Runs as a native menu bar app with no mouse-event interception, overlay window, driver, or background helper.
 - Restores the original system cursors when paused or exited normally.
 
@@ -44,7 +45,7 @@ Download the latest release from the [Releases page](https://github.com/JuGyang/
 
 ### Recommended: DMG
 
-1. Download `CatPointer-v1.5.2-macOS-arm64.dmg`.
+1. Download `CatPointer-v1.5.3-macOS-arm64.dmg`.
 2. Open the disk image.
 3. Drag **CatPointer** into **Applications**.
 4. Open CatPointer from Applications.
@@ -53,16 +54,16 @@ Because this community build is not notarized, macOS may block the first launch.
 
 ### Alternative: ZIP
 
-Download `CatPointer-v1.5.2-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
+Download `CatPointer-v1.5.3-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
 
 The release also includes `SHA256SUMS.txt`. Verify a download with:
 
 ```bash
-shasum -a 256 CatPointer-v1.5.2-macOS-arm64.dmg
+shasum -a 256 CatPointer-v1.5.3-macOS-arm64.dmg
 ```
 
-See the [v1.5.2 validation report](Validation/TEST_REPORT-v1.5.2.md) for the
-tested environment, menu-bar fallback coverage, and artifact checksums.
+See the [v1.5.3 validation report](Validation/TEST_REPORT-v1.5.3.md) for the
+tested environment, installer-layout coverage, and artifact checksums.
 
 ## Use
 
@@ -114,7 +115,7 @@ Requirements:
 
 - macOS 13 or later
 - Xcode Command Line Tools
-- `clang`, `make`, `codesign`, and `hdiutil`
+- `clang`, `make`, `codesign`, `hdiutil`, and the standard Finder scripting tools
 
 ```bash
 git clone https://github.com/JuGyang/CatPointerMac.git
@@ -126,8 +127,8 @@ make package
 Release artifacts are written to `dist/`:
 
 - `CatPointer.app`
-- `CatPointer-v1.5.2-macOS-<architecture>.dmg`
-- `CatPointer-v1.5.2-macOS-<architecture>.zip`
+- `CatPointer-v1.5.3-macOS-<architecture>.dmg`
+- `CatPointer-v1.5.3-macOS-<architecture>.zip`
 - `SHA256SUMS.txt`
 
 Run the integration self-test after packaging:
@@ -137,6 +138,10 @@ dist/CatPointer.app/Contents/MacOS/CatPointer --self-test
 ```
 
 Run the self-test only when another CatPointer instance is not active. It temporarily registers both cursor types, validates all animation frames and speed levels, and restores the original cursors before exiting.
+
+`make package` opens Finder briefly to save the DMG window layout, so run that
+target from a logged-in macOS desktop session. Normal builds and tests do not
+require Finder.
 
 ## Artwork and licenses
 

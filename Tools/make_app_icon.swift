@@ -61,6 +61,99 @@ private func contentBounds(
     )
 }
 
+struct AlphaComponent {
+    let bounds: NSRect
+    let pixels: [Bool]
+}
+
+private func largestAlphaComponent(in bitmap: NSBitmapImageRep) -> AlphaComponent {
+    let width = bitmap.pixelsWide
+    let height = bitmap.pixelsHigh
+    var content = Array(repeating: false, count: width * height)
+    var visited = Array(repeating: false, count: width * height)
+
+    for y in 0..<height {
+        for x in 0..<width {
+            let index = y * width + x
+            content[index] =
+                bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0 > 0.01
+        }
+    }
+
+    var bestCount = 0
+    var bestBounds = NSRect.zero
+    var bestIndices: [Int] = []
+    let neighbors = [
+        (0, -1),
+        (-1, 0), (1, 0),
+        (0, 1),
+    ]
+
+    for startY in 0..<height {
+        for startX in 0..<width {
+            let startIndex = startY * width + startX
+            if visited[startIndex] || !content[startIndex] {
+                continue
+            }
+
+            var queue = [startIndex]
+            var cursor = 0
+            visited[startIndex] = true
+            var count = 0
+            var minX = startX
+            var minY = startY
+            var maxX = startX
+            var maxY = startY
+
+            while cursor < queue.count {
+                let index = queue[cursor]
+                cursor += 1
+                let x = index % width
+                let y = index / width
+                count += 1
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
+
+                for (deltaX, deltaY) in neighbors {
+                    let nextX = x + deltaX
+                    let nextY = y + deltaY
+                    if nextX < 0 || nextX >= width ||
+                        nextY < 0 || nextY >= height {
+                        continue
+                    }
+                    let nextIndex = nextY * width + nextX
+                    if !visited[nextIndex] && content[nextIndex] {
+                        visited[nextIndex] = true
+                        queue.append(nextIndex)
+                    }
+                }
+            }
+
+            if count > bestCount {
+                bestCount = count
+                bestIndices = queue
+                bestBounds = NSRect(
+                    x: minX,
+                    y: minY,
+                    width: maxX - minX + 1,
+                    height: maxY - minY + 1
+                )
+            }
+        }
+    }
+
+    guard bestCount > 0 else {
+        fail("subject image has no visible content")
+    }
+    var bestPixels = Array(repeating: false, count: width * height)
+    for index in bestIndices {
+        bestPixels[index] = true
+    }
+    return AlphaComponent(bounds: bestBounds, pixels: bestPixels)
+}
+
 private func expandedSquare(_ rect: NSRect, limit: NSSize) -> NSRect {
     let side = max(rect.width, rect.height)
     var square = NSRect(
@@ -89,10 +182,55 @@ private func imageCoordinateRect(
     let scaleY = image.size.height / CGFloat(bitmap.pixelsHigh)
     return NSRect(
         x: pixelRect.origin.x * scaleX,
-        y: pixelRect.origin.y * scaleY,
+        y: (CGFloat(bitmap.pixelsHigh) - pixelRect.maxY) * scaleY,
         width: pixelRect.width * scaleX,
         height: pixelRect.height * scaleY
     )
+}
+
+private func croppedImage(
+    from bitmap: NSBitmapImageRep,
+    component: AlphaComponent
+) -> NSImage {
+    let bounds = component.bounds
+    let width = Int(bounds.width)
+    let height = Int(bounds.height)
+    guard let cropped = NSBitmapImageRep(
+        bitmapDataPlanes: nil,
+        pixelsWide: width,
+        pixelsHigh: height,
+        bitsPerSample: 8,
+        samplesPerPixel: 4,
+        hasAlpha: true,
+        isPlanar: false,
+        colorSpaceName: .deviceRGB,
+        bytesPerRow: 0,
+        bitsPerPixel: 0
+    ) else {
+        fail("cannot allocate cropped subject bitmap")
+    }
+
+    for y in 0..<height {
+        for x in 0..<width {
+            let sourceX = Int(bounds.minX) + x
+            let sourceY = Int(bounds.minY) + y
+            let sourceIndex = sourceY * bitmap.pixelsWide + sourceX
+            if !component.pixels[sourceIndex] {
+                continue
+            }
+            guard let color = bitmap.colorAt(
+                x: sourceX,
+                y: sourceY
+            ) else {
+                continue
+            }
+            cropped.setColor(color, atX: x, y: y)
+        }
+    }
+
+    let result = NSImage(size: NSSize(width: width, height: height))
+    result.addRepresentation(cropped)
+    return result
 }
 
 guard CommandLine.arguments.count == 4 else {
@@ -106,7 +244,6 @@ let backgroundPath = CommandLine.arguments[1]
 let subjectPath = CommandLine.arguments[2]
 let outputPath = CommandLine.arguments[3]
 let background = image(at: backgroundPath)
-let subject = image(at: subjectPath)
 let backgroundBitmap = bitmap(at: backgroundPath)
 let subjectBitmap = bitmap(at: subjectPath)
 
@@ -127,20 +264,16 @@ let backgroundCrop = expandedSquare(
         height: backgroundBitmap.pixelsHigh
     )
 )
-let subjectBounds = contentBounds(in: subjectBitmap) { color in
-    color.alphaComponent > 0.01
-}
+// The cursor and cat are separate alpha components in this frame. Keep only
+// the larger cat component so no partial pointer appears in the app icon.
+let subjectComponent = largestAlphaComponent(in: subjectBitmap)
+let subjectBounds = subjectComponent.bounds
+let subject = croppedImage(from: subjectBitmap, component: subjectComponent)
 let backgroundSourceRect = imageCoordinateRect(
     backgroundCrop,
     bitmap: backgroundBitmap,
     image: background
 )
-let subjectSourceRect = imageCoordinateRect(
-    subjectBounds,
-    bitmap: subjectBitmap,
-    image: subject
-)
-
 let canvasPixels = 1024
 guard let output = NSBitmapImageRep(
     bitmapDataPlanes: nil,
@@ -210,12 +343,13 @@ glaze?.draw(
 )
 NSGraphicsContext.restoreGraphicsState()
 
-let subjectWidth: CGFloat = 626
+// Keep the complete cat comfortably inside the icon's safe area.
+let subjectWidth: CGFloat = 520
 let subjectHeight =
     subjectWidth * subjectBounds.height / subjectBounds.width
 let subjectRect = NSRect(
     x: (CGFloat(canvasPixels) - subjectWidth) / 2,
-    y: (CGFloat(canvasPixels) - subjectHeight) / 2 - 58,
+    y: (CGFloat(canvasPixels) - subjectHeight) / 2 - 42,
     width: subjectWidth,
     height: subjectHeight
 )
@@ -233,7 +367,7 @@ context.setShadow(
 )
 subject.draw(
     in: subjectRect,
-    from: subjectSourceRect,
+    from: NSRect(origin: .zero, size: subject.size),
     operation: .sourceOver,
     fraction: 1,
     respectFlipped: true,
