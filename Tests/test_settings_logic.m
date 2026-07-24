@@ -38,6 +38,27 @@
 
 @end
 
+@interface CPAppDelegate (CPMenuBarTesting)
+
+- (BOOL)statusItemNeedsDockFallback;
+- (void)updateMenuBarAccessFallback;
+
+@end
+
+@interface CPMenuBarFallbackDelegate : CPAppDelegate
+
+@property(nonatomic) BOOL simulatedFallbackRequired;
+
+@end
+
+@implementation CPMenuBarFallbackDelegate
+
+- (BOOL)statusItemNeedsDockFallback {
+    return self.simulatedFallbackRequired;
+}
+
+@end
+
 static void CPTestRequire(BOOL condition, NSString *message) {
     if (condition) {
         return;
@@ -119,6 +140,70 @@ static void CPTestCanonicalSettings(void) {
         fabs(ordered[0].doubleValue - 0.9) < 0.001 &&
         fabs(ordered[1].doubleValue - 1.0) < 0.001,
         @"预热顺序应从当前档开始并优先标准档"
+    );
+}
+
+static void CPTestNotchedMenuBarFallback(void) {
+    NSRect screen = NSMakeRect(0, 0, 1512, 982);
+    NSEdgeInsets notchInsets = NSEdgeInsetsMake(32, 0, 0, 0);
+    NSRect rightSafeArea = NSMakeRect(920, 950, 592, 32);
+
+    CPTestRequire(
+        !CPMenuBarNeedsFallback(
+            screen,
+            NSEdgeInsetsMake(0, 0, 0, 0),
+            NSZeroRect,
+            NSZeroRect,
+            NO
+        ),
+        @"无刘海屏不应显示 Dock 备用入口"
+    );
+    CPTestRequire(
+        !CPMenuBarNeedsFallback(
+            screen,
+            notchInsets,
+            rightSafeArea,
+            NSMakeRect(1450, 950, 24, 32),
+            YES
+        ),
+        @"位于刘海右侧安全区的菜单栏图标不应触发备用入口"
+    );
+    CPTestRequire(
+        CPMenuBarNeedsFallback(
+            screen,
+            notchInsets,
+            rightSafeArea,
+            NSMakeRect(895, 950, 24, 32),
+            YES
+        ),
+        @"被刘海覆盖的菜单栏图标必须触发 Dock 备用入口"
+    );
+    CPTestRequire(
+        CPMenuBarNeedsFallback(
+            screen,
+            notchInsets,
+            rightSafeArea,
+            NSZeroRect,
+            NO
+        ),
+        @"刘海屏上不可见的菜单栏窗口必须触发备用入口"
+    );
+
+    CPMenuBarFallbackDelegate *delegate =
+        [CPMenuBarFallbackDelegate new];
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    delegate.simulatedFallbackRequired = YES;
+    [delegate updateMenuBarAccessFallback];
+    CPTestRequire(
+        NSApp.activationPolicy == NSApplicationActivationPolicyRegular &&
+        NSApp.mainMenu.numberOfItems == 1,
+        @"菜单栏入口被遮挡时应实际显示 Dock 与应用菜单入口"
+    );
+    delegate.simulatedFallbackRequired = NO;
+    [delegate updateMenuBarAccessFallback];
+    CPTestRequire(
+        NSApp.activationPolicy == NSApplicationActivationPolicyAccessory,
+        @"菜单栏入口恢复后应退出 Dock 备用模式"
     );
 }
 
@@ -286,6 +371,8 @@ static void CPTestSettingsWindowStructure(void) {
         [delegate valueForKey:@"settingsSpeedSlider"];
     NSSwitch *enableSwitch =
         [delegate valueForKey:@"settingsEnableSwitch"];
+    NSTextField *explanationLabel =
+        [delegate valueForKey:@"settingsExplanationLabel"];
     NSButton *verifyButton =
         [delegate valueForKey:@"settingsVerifyButton"];
     NSButton *resetButton =
@@ -323,6 +410,15 @@ static void CPTestSettingsWindowStructure(void) {
         speedSlider.commitAction ==
             @selector(settingsSpeedCommitted:),
         @"速度滑杆应连续预览、四档吸附并独立松手提交"
+    );
+    CPTestRequire(
+        [explanationLabel.stringValue
+            containsString:@"拖动选择档位，松开后应用"] &&
+        [sizeSlider.toolTip
+            containsString:@"松开后应用到鼠标指针"] &&
+        [speedSlider.toolTip
+            containsString:@"松开后应用到小猫动画"],
+        @"设置页必须明确说明拖动只选择档位、松开后才应用"
     );
     CPTestRequire(
         [enableSwitch.accessibilityLabel isEqualToString:@"启用猫标"] &&
@@ -382,6 +478,7 @@ int main(int argc, const char *argv[]) {
     @autoreleasepool {
         (void)NSApplication.sharedApplication;
         CPTestCanonicalSettings();
+        CPTestNotchedMenuBarFallback();
         CPTestSliderKeyboardAndAccessibility();
         CPTestSliderMouseCommit();
         CPTestSettingsWindowStructure();
@@ -399,8 +496,9 @@ int main(int argc, const char *argv[]) {
             );
         }
         puts(
-            "PASS: settings layout, migration, mouse commit, keyboard "
-            "stepping, and accessibility actions validated"
+            "PASS: settings layout, notched menu bar fallback, migration, "
+            "mouse commit, keyboard stepping, and accessibility actions "
+            "validated"
         );
     }
     return 0;
