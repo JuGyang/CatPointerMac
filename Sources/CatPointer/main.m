@@ -25,8 +25,34 @@ static NSString *const CPActivateExistingNotification =
     @"com.local.catpointer.activate-existing";
 static NSString *const CPSettingsWindowFrameAutosaveName =
     @"CatPointerSettingsWindowFrame";
+static NSString *const CPStatusItemAutosaveName =
+    @"CatPointerPrimaryStatusItem";
 
 static CGFloat CPCanonicalScale(CGFloat scale);
+
+static BOOL CPMenuBarNeedsFallback(
+    NSRect screenFrame,
+    NSEdgeInsets safeAreaInsets,
+    NSRect auxiliaryTopRightArea,
+    NSRect statusItemFrame,
+    BOOL statusItemWindowVisible
+) {
+    if (safeAreaInsets.top < 1.0) {
+        return NO;
+    }
+    if (NSIsEmptyRect(auxiliaryTopRightArea) ||
+        NSIsEmptyRect(statusItemFrame) ||
+        !statusItemWindowVisible) {
+        return YES;
+    }
+
+    NSRect toleratedSafeArea =
+        NSInsetRect(auxiliaryTopRightArea, -1.0, -1.0);
+    BOOL safeAreaBelongsToScreen =
+        NSIntersectsRect(screenFrame, auxiliaryTopRightArea);
+    return !safeAreaBelongsToScreen ||
+        !NSContainsRect(toleratedSafeArea, statusItemFrame);
+}
 
 static NSArray<NSNumber *> *CPSizeSteps(void) {
     static NSArray<NSNumber *> *steps;
@@ -258,6 +284,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
 - (void)prewarmSizeChoicesForProfile:(NSString *)profile;
 - (BOOL)applyPendingSettingsNow;
 - (void)persistPendingSettingsAndCancel;
+- (void)scheduleMenuBarAccessCheck;
 
 @end
 
@@ -306,6 +333,8 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     NSInteger _lastPreviewSpeedIndex;
     BOOL _terminationApproved;
     BOOL _secondaryInstance;
+    BOOL _dockFallbackActive;
+    NSUInteger _menuBarAccessCheckGeneration;
     int _instanceLockFD;
     NSError *_instanceLockError;
     CPApplicationState _applicationState;
@@ -460,7 +489,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
             postNotificationName:CPActivateExistingNotification
                           object:nil
                         userInfo:@{
-                            @"showSettings": @(_showSettingsOnLaunch),
+                            @"showSettings": @YES,
                         }
               deliverImmediately:YES];
         _terminationApproved = YES;
@@ -489,6 +518,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
 
     [self buildStatusItem];
     [self observeSystemEvents];
+    [self scheduleMenuBarAccessCheck];
     [NSDistributedNotificationCenter.defaultCenter
         addObserver:self
            selector:@selector(showExistingStatusMenu:)
@@ -540,6 +570,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     _statusItem = [NSStatusBar.systemStatusBar
         statusItemWithLength:NSSquareStatusItemLength
     ];
+    _statusItem.autosaveName = CPStatusItemAutosaveName;
     _statusItem.button.image = [self makeStatusIcon];
     _statusItem.button.imagePosition = NSImageOnly;
     _statusItem.button.toolTip = @"猫标 CatPointer";
@@ -849,7 +880,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
                          object:nil];
     [NSNotificationCenter.defaultCenter
         addObserver:self
-           selector:@selector(systemDidBecomeActive:)
+           selector:@selector(screenParametersDidChange:)
                name:NSApplicationDidChangeScreenParametersNotification
              object:nil
     ];
@@ -858,6 +889,108 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
 - (void)systemDidBecomeActive:(NSNotification *)notification {
     (void)notification;
     [self scheduleSystemReapply];
+    [self scheduleMenuBarAccessCheck];
+}
+
+- (void)screenParametersDidChange:(NSNotification *)notification {
+    (void)notification;
+    [self scheduleSystemReapply];
+    [self scheduleMenuBarAccessCheck];
+}
+
+- (BOOL)statusItemNeedsDockFallback {
+    NSButton *button = _statusItem.button;
+    NSWindow *window = button.window;
+    NSScreen *screen = window.screen ?: NSScreen.mainScreen;
+    if (screen == nil) {
+        return NO;
+    }
+    NSRect buttonWindowFrame =
+        [button convertRect:button.bounds toView:nil];
+    NSRect buttonScreenFrame = window == nil
+        ? NSZeroRect
+        : [window convertRectToScreen:buttonWindowFrame];
+    return CPMenuBarNeedsFallback(
+        screen.frame,
+        screen.safeAreaInsets,
+        screen.auxiliaryTopRightArea,
+        buttonScreenFrame,
+        window.isVisible
+    );
+}
+
+- (void)installFallbackMainMenu {
+    if (NSApp.mainMenu != nil) {
+        return;
+    }
+
+    NSMenu *mainMenu = [NSMenu new];
+    NSMenuItem *applicationItem =
+        [[NSMenuItem alloc] initWithTitle:@"猫标"
+                                  action:nil
+                           keyEquivalent:@""];
+    [mainMenu addItem:applicationItem];
+
+    NSMenu *applicationMenu = [[NSMenu alloc] initWithTitle:@"猫标"];
+    NSMenuItem *settings = [[NSMenuItem alloc]
+        initWithTitle:@"设置…"
+               action:@selector(showSettings:)
+        keyEquivalent:@","];
+    settings.target = self;
+    [applicationMenu addItem:settings];
+    [applicationMenu addItem:NSMenuItem.separatorItem];
+
+    NSMenuItem *quit = [[NSMenuItem alloc]
+        initWithTitle:@"退出并恢复系统指针"
+               action:@selector(quitAndRestore:)
+        keyEquivalent:@"q"];
+    quit.target = self;
+    [applicationMenu addItem:quit];
+    applicationItem.submenu = applicationMenu;
+    NSApp.mainMenu = mainMenu;
+}
+
+- (void)updateMenuBarAccessFallback {
+    BOOL shouldShowDock = [self statusItemNeedsDockFallback];
+    if (shouldShowDock == _dockFallbackActive) {
+        return;
+    }
+
+    if (shouldShowDock) {
+        [self installFallbackMainMenu];
+    }
+    NSApplicationActivationPolicy policy = shouldShowDock
+        ? NSApplicationActivationPolicyRegular
+        : NSApplicationActivationPolicyAccessory;
+    if ([NSApp setActivationPolicy:policy]) {
+        _dockFallbackActive = shouldShowDock;
+        [self refreshMenu];
+    }
+}
+
+- (void)scheduleMenuBarAccessCheck {
+    if (_statusItem == nil) {
+        return;
+    }
+    NSUInteger generation = ++_menuBarAccessCheckGeneration;
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(
+        dispatch_time(DISPATCH_TIME_NOW, 700 * NSEC_PER_MSEC),
+        dispatch_get_main_queue(),
+        ^{
+            typeof(self) strongSelf = weakSelf;
+            if (strongSelf == nil ||
+                generation != strongSelf->_menuBarAccessCheckGeneration) {
+                return;
+            }
+            [strongSelf updateMenuBarAccessFallback];
+        }
+    );
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+    (void)notification;
+    [self scheduleMenuBarAccessCheck];
 }
 
 - (void)scheduleSystemReapply {
@@ -929,12 +1062,21 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
 
 - (void)showExistingStatusMenu:(NSNotification *)notification {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if ([notification.userInfo[@"showSettings"] boolValue]) {
+        if ([notification.userInfo[@"showSettings"] boolValue] ||
+            [self statusItemNeedsDockFallback]) {
             [self showSettings:nil];
         } else {
             [self->_statusItem.button performClick:nil];
         }
     });
+}
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)sender
+                    hasVisibleWindows:(BOOL)hasVisibleWindows {
+    (void)sender;
+    (void)hasVisibleWindows;
+    [self showSettings:nil];
+    return YES;
 }
 
 - (void)installSignalHandlers {
@@ -1116,9 +1258,9 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     _settingsSizeSlider.controlSize = NSControlSizeLarge;
     _settingsSizeSlider.accessibilityLabel = @"指针尺寸";
     _settingsSizeSlider.accessibilityHelp =
-        @"拖动可预览，松开后应用；也可使用左右方向键逐档调整。";
+        @"拖动选择档位，松开后应用；也可使用左右方向键逐档调整。";
     _settingsSizeSlider.toolTip =
-        @"拖动可预览档位，松开后应用。";
+        @"拖动选择指针尺寸，松开后应用到鼠标指针。";
 
     NSMutableArray<NSView *> *sizeTickLabels =
         [NSMutableArray array];
@@ -1170,9 +1312,10 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     _settingsSpeedSlider.accessibilityLabel = @"小猫动作速度";
     _settingsSpeedSlider.accessibilityHelp =
         @"只改变小猫动作快慢，不改变鼠标移动速度。"
-         "拖动可预览，松开后应用。";
+         "拖动选择档位，松开后应用。";
     _settingsSpeedSlider.toolTip =
-        @"只改变小猫动作快慢，不改变鼠标移动速度。";
+        @"拖动选择小猫动作速度，松开后应用到小猫动画；"
+         "不改变鼠标移动速度。";
 
     NSMutableArray<NSView *> *speedTickLabels =
         [NSMutableArray array];
@@ -1192,7 +1335,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     speedTicks.spacing = 0;
 
     _settingsExplanationLabel = [NSTextField wrappingLabelWithString:
-        @"拖动可预览档位，松开即切换；也可用 ← → 逐档调整。\n"
+        @"拖动选择档位，松开后应用；也可用 ← → 逐档调整。\n"
         @"只改变猫标外观，不改变鼠标移动速度，也不影响点击、拖拽、"
         @"滚动或输入。"];
     _settingsExplanationLabel.textColor = NSColor.secondaryLabelColor;
@@ -1397,7 +1540,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     _settingsSizeSlider.accessibilityValueDescription =
         _settingsSizeValueLabel.stringValue;
     _settingsSizeSlider.toolTip = [NSString stringWithFormat:
-        @"当前选择：%@。松开后应用。",
+        @"当前选择：%@。松开后应用到鼠标指针。",
         _settingsSizeValueLabel.stringValue];
     [self updateTickLabels:_settingsSizeTickLabels selectedIndex:index];
     if (performHaptic && _lastPreviewSizeIndex >= 0 &&
@@ -1421,7 +1564,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     _settingsSpeedSlider.accessibilityValueDescription =
         _settingsSpeedValueLabel.stringValue;
     _settingsSpeedSlider.toolTip = [NSString stringWithFormat:
-        @"当前选择：%@。只改变小猫动作快慢。",
+        @"当前选择：%@。松开后应用到小猫动画，不改变鼠标移动速度。",
         _settingsSpeedValueLabel.stringValue];
     [self updateTickLabels:_settingsSpeedTickLabels selectedIndex:index];
     if (performHaptic && _lastPreviewSpeedIndex >= 0 &&
@@ -1512,13 +1655,17 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
         statusText = _settingsTransientStatus;
         indicatorColor = NSColor.systemGreenColor;
     } else if (_registrar.enabled) {
-        statusText = [NSString stringWithFormat:
-            @"已启用 · %@ · %.0f%%",
-            CPSpeedDisplayName([self savedAnimationProfile]),
-            _registrar.scale * 100.0];
+        statusText = _dockFallbackActive
+            ? @"已启用 · 菜单栏空间不足，已保留 Dock 入口"
+            : [NSString stringWithFormat:
+                @"已启用 · %@ · %.0f%%",
+                CPSpeedDisplayName([self savedAnimationProfile]),
+                _registrar.scale * 100.0];
         indicatorColor = NSColor.systemGreenColor;
     } else {
-        statusText = @"已暂停 · 当前使用系统指针";
+        statusText = _dockFallbackActive
+            ? @"已暂停 · 菜单栏空间不足，已保留 Dock 入口"
+            : @"已暂停 · 当前使用系统指针";
     }
     _settingsStatusLabel.stringValue = statusText ?: @"正在读取状态…";
     _settingsStatusLabel.textColor = NSColor.secondaryLabelColor;
@@ -1539,7 +1686,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
             ? _desiredEnabled
             : _registrar.enabled;
     _settingsExplanationLabel.stringValue = explanationUsesEnabledBehavior
-        ? @"拖动可预览档位，松开即切换；也可用 ← → 逐档调整。\n"
+        ? @"拖动选择档位，松开后应用；也可用 ← → 逐档调整。\n"
           @"只改变猫标外观，不改变鼠标移动速度，也不影响点击、"
           @"拖拽、滚动或输入。"
         : @"调整会自动保存，重新启用时使用；也可用 ← → 逐档调整。\n"
@@ -1893,6 +2040,19 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
         _lastBackgroundError = nil;
         [_registrar refreshVisibleCursorAfterSettingChange];
         [self prewarmSizeChoicesForProfile:profile];
+        NSString *message = [NSString stringWithFormat:
+            @"已应用 · %.0f%% · %@",
+            scale * 100.0,
+            CPSpeedDisplayName(profile)];
+        NSString *announcement = _settingsWindow.isVisible
+            ? [NSString stringWithFormat:
+                @"猫标设置已应用，尺寸百分之 %.0f，速度%@",
+                scale * 100.0,
+                CPSpeedDisplayName(profile)]
+            : nil;
+        [self showTransientSettingsStatus:message
+                                 duration:1.8
+                             announcement:announcement];
     } else {
         _hasPendingSettings = NO;
         _pendingProfile = nil;

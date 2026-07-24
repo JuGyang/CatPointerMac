@@ -44,7 +44,7 @@ Download the latest release from the [Releases page](https://github.com/JuGyang/
 
 ### Recommended: DMG
 
-1. Download `CatPointer-v1.5.1-macOS-arm64.dmg`.
+1. Download `CatPointer-v1.5.2-macOS-arm64.dmg`.
 2. Open the disk image.
 3. Drag **CatPointer** into **Applications**.
 4. Open CatPointer from Applications.
@@ -53,13 +53,16 @@ Because this community build is not notarized, macOS may block the first launch.
 
 ### Alternative: ZIP
 
-Download `CatPointer-v1.5.1-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
+Download `CatPointer-v1.5.2-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
 
 The release also includes `SHA256SUMS.txt`. Verify a download with:
 
 ```bash
-shasum -a 256 CatPointer-v1.5.1-macOS-arm64.dmg
+shasum -a 256 CatPointer-v1.5.2-macOS-arm64.dmg
 ```
+
+See the [v1.5.2 validation report](Validation/TEST_REPORT-v1.5.2.md) for the
+tested environment, menu-bar fallback coverage, and artifact checksums.
 
 ## Use
 
@@ -69,7 +72,16 @@ CatPointer installs the animated cursors as soon as it starts. Use its menu bar 
 - pause or re-enable CatPointer;
 - restore the original cursors and quit.
 
-In Settings, drag the **Cursor size** and **Cat animation speed** sliders. Changes are reflected in the interface immediately and applied to the cursor without an artificial waiting period.
+In Settings, drag the **Cursor size** and **Cat animation speed** sliders to
+choose a level. The value and tick highlight follow the slider while dragging;
+the final level is applied once when you release it. A short confirmation
+shows the size and speed that were applied.
+
+On a MacBook with a camera housing, CatPointer checks that its paw icon is
+inside the unobscured right side of the menu bar. If macOS hides the icon
+because that area is full, CatPointer temporarily keeps a Dock icon as a
+fallback. Reopening CatPointer from Applications always opens Settings, even
+when the menu bar icon is unavailable.
 
 ## Performance and input safety
 
@@ -114,8 +126,8 @@ make package
 Release artifacts are written to `dist/`:
 
 - `CatPointer.app`
-- `CatPointer-v1.5.1-macOS-<architecture>.dmg`
-- `CatPointer-v1.5.1-macOS-<architecture>.zip`
+- `CatPointer-v1.5.2-macOS-<architecture>.dmg`
+- `CatPointer-v1.5.2-macOS-<architecture>.zip`
 - `SHA256SUMS.txt`
 
 Run the integration self-test after packaging:

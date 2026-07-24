@@ -44,7 +44,7 @@ CatPointer 使用 macOS 未公开的光标注册接口。未来的 macOS 更新�
 
 ### 推荐：DMG
 
-1. 下载 `CatPointer-v1.5.1-macOS-arm64.dmg`。
+1. 下载 `CatPointer-v1.5.2-macOS-arm64.dmg`。
 2. 打开磁盘映像。
 3. 将 **CatPointer** 拖入 **Applications（应用程序）**。
 4. 从应用程序文件夹打开 CatPointer。
@@ -53,13 +53,16 @@ CatPointer 使用 macOS 未公开的光标注册接口。未来的 macOS 更新�
 
 ### 备用：ZIP
 
-下载 `CatPointer-v1.5.1-macOS-arm64.zip`，解压后将 `CatPointer.app` 移入应用程序文件夹。ZIP 与 DMG 中的应用完全相同，主要用于自动化下载或偏好压缩包的用户。
+下载 `CatPointer-v1.5.2-macOS-arm64.zip`，解压后将 `CatPointer.app` 移入应用程序文件夹。ZIP 与 DMG 中的应用完全相同，主要用于自动化下载或偏好压缩包的用户。
 
 Release 同时提供 `SHA256SUMS.txt`。可用以下命令校验文件：
 
 ```bash
-shasum -a 256 CatPointer-v1.5.1-macOS-arm64.dmg
+shasum -a 256 CatPointer-v1.5.2-macOS-arm64.dmg
 ```
+
+测试环境、刘海菜单栏备用入口覆盖与安装包校验值见
+[v1.5.2 验证报告](Validation/TEST_REPORT-v1.5.2.md)。
 
 ## 使用方法
 
@@ -69,7 +72,9 @@ CatPointer 启动后会立即安装动画指针。通过菜单栏图标可以：
 - 暂停或重新启用猫标；
 - 恢复系统指针并退出。
 
-在设置窗口中拖动“指针尺寸”和“小猫动作速度”滑杆。界面会立即显示新档位，鼠标指针也会直接应用最终设置，不需要额外等待。
+在设置窗口中拖动“指针尺寸”和“小猫动作速度”滑杆选择档位。拖动时数值和刻度高亮会立即跟随，松开后只应用一次最终档位，并短暂显示实际应用的尺寸与速度，避免把界面选择误解为鼠标效果的实时预览。
+
+在带刘海的 MacBook 上，CatPointer 会检查爪印是否位于菜单栏右侧未被遮挡的安全区域。如果该区域已经放不下、macOS 隐藏了爪印，应用会临时保留一个 Dock 图标作为备用入口。即使菜单栏图标不可用，再次从“应用程序”打开 CatPointer 也会直接进入设置。
 
 ## 流畅度与输入安全
 
@@ -114,8 +119,8 @@ make package
 发布文件位于 `dist/`：
 
 - `CatPointer.app`
-- `CatPointer-v1.5.1-macOS-<架构>.dmg`
-- `CatPointer-v1.5.1-macOS-<架构>.zip`
+- `CatPointer-v1.5.2-macOS-<架构>.dmg`
+- `CatPointer-v1.5.2-macOS-<架构>.zip`
 - `SHA256SUMS.txt`
 
 打包后可运行完整自检：
