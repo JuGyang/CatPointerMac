@@ -1,7 +1,7 @@
 # CatPointer for macOS
 
 <p align="center">
-  <img src="Validation/catpointer-original-preview.png" width="560" alt="CatPointer animated cursor preview">
+  <img src="Validation/catpointer-demo.gif" width="560" alt="Animated preview of the CatPointer arrow and text cursors">
 </p>
 
 <p align="center">

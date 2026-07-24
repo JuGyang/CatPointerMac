@@ -1,7 +1,7 @@
 # 猫标 CatPointer for macOS
 
 <p align="center">
-  <img src="Validation/catpointer-original-preview.png" width="560" alt="猫标动画鼠标指针预览">
+  <img src="Validation/catpointer-demo.gif" width="560" alt="猫标普通指针和文字指针动画预览">
 </p>
 
 <p align="center">

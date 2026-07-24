@@ -8,6 +8,8 @@ SETTINGS_TEST_BINARY := $(TEST_DIR)/test_settings_logic
 CURSOR_DIAGNOSTIC_BINARY := $(TEST_DIR)/current_cursor
 VIDEO_FRAME_EXTRACTOR := $(TEST_DIR)/extract_video_frames
 FRAME_LIMIT_PROBE := $(TEST_DIR)/probe_frame_limit
+README_PREVIEW_TOOL := $(TEST_DIR)/build_readme_preview
+README_PREVIEW := $(PROJECT_DIR)/Validation/catpointer-demo.gif
 
 CC := clang
 CFLAGS := -fobjc-arc -fblocks -fmodules -fmodules-cache-path=$(MODULE_CACHE) \
@@ -21,7 +23,8 @@ APP_SOURCES := \
 	Sources/CatPointer/CursorAssetSequence.m \
 	Sources/CatPointer/SystemCursorRegistrar.m
 
-.PHONY: all release debug test diagnostics frame-limit-probe app-icon clean package
+.PHONY: all release debug test diagnostics frame-limit-probe app-icon \
+	readme-preview clean package
 
 all: release
 
@@ -67,6 +70,16 @@ $(FRAME_LIMIT_PROBE): Tools/probe_frame_limit.m
 
 frame-limit-probe: $(FRAME_LIMIT_PROBE)
 	$(FRAME_LIMIT_PROBE) 24 8 8
+
+$(README_PREVIEW_TOOL): Tools/build_readme_preview.m
+	@mkdir -p $(TEST_DIR) $(MODULE_CACHE)
+	$(CC) $(CFLAGS) -O2 Tools/build_readme_preview.m \
+		-framework Foundation -framework CoreGraphics \
+		-framework ImageIO -framework UniformTypeIdentifiers \
+		-o $@
+
+readme-preview: $(README_PREVIEW_TOOL)
+	$(README_PREVIEW_TOOL) "$(PROJECT_DIR)" "$(README_PREVIEW)"
 
 app-icon:
 	./Scripts/build-app-icon.sh
