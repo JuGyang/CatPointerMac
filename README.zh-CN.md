@@ -22,6 +22,7 @@
 - 使用 HappyCadogt 创作的原始猫咪动画，不以近似图形重新绘制。
 - 提供 5 档指针尺寸和 4 档易懂的动画速度：慢、适中、快速、极致。
 - 设置操作立即反馈，同时避免无意义地重复重建系统光标。
+- 提供经过设计的拖拽式 DMG 安装界面，并使用原生“应用程序”替身。
 - 原生菜单栏应用，不监听鼠标事件、不使用指针跟随悬浮窗、不安装驱动或后台辅助进程。
 - 暂停或正常退出时恢复原来的系统指针。
 
@@ -44,7 +45,7 @@ CatPointer 使用 macOS 未公开的光标注册接口。未来的 macOS 更新�
 
 ### 推荐：DMG
 
-1. 下载 `CatPointer-v1.5.2-macOS-arm64.dmg`。
+1. 下载 `CatPointer-v1.5.3-macOS-arm64.dmg`。
 2. 打开磁盘映像。
 3. 将 **CatPointer** 拖入 **Applications（应用程序）**。
 4. 从应用程序文件夹打开 CatPointer。
@@ -53,16 +54,16 @@ CatPointer 使用 macOS 未公开的光标注册接口。未来的 macOS 更新�
 
 ### 备用：ZIP
 
-下载 `CatPointer-v1.5.2-macOS-arm64.zip`，解压后将 `CatPointer.app` 移入应用程序文件夹。ZIP 与 DMG 中的应用完全相同，主要用于自动化下载或偏好压缩包的用户。
+下载 `CatPointer-v1.5.3-macOS-arm64.zip`，解压后将 `CatPointer.app` 移入应用程序文件夹。ZIP 与 DMG 中的应用完全相同，主要用于自动化下载或偏好压缩包的用户。
 
 Release 同时提供 `SHA256SUMS.txt`。可用以下命令校验文件：
 
 ```bash
-shasum -a 256 CatPointer-v1.5.2-macOS-arm64.dmg
+shasum -a 256 CatPointer-v1.5.3-macOS-arm64.dmg
 ```
 
-测试环境、刘海菜单栏备用入口覆盖与安装包校验值见
-[v1.5.2 验证报告](Validation/TEST_REPORT-v1.5.2.md)。
+测试环境、DMG 安装界面覆盖与安装包校验值见
+[v1.5.3 验证报告](Validation/TEST_REPORT-v1.5.3.md)。
 
 ## 使用方法
 
@@ -107,7 +108,7 @@ CatPointer 启动后会立即安装动画指针。通过菜单栏图标可以：
 
 - macOS 13 或更高版本
 - Xcode Command Line Tools
-- `clang`、`make`、`codesign` 和 `hdiutil`
+- `clang`、`make`、`codesign`、`hdiutil` 和系统自带的 Finder 脚本工具
 
 ```bash
 git clone https://github.com/JuGyang/CatPointerMac.git
@@ -119,8 +120,8 @@ make package
 发布文件位于 `dist/`：
 
 - `CatPointer.app`
-- `CatPointer-v1.5.2-macOS-<架构>.dmg`
-- `CatPointer-v1.5.2-macOS-<架构>.zip`
+- `CatPointer-v1.5.3-macOS-<架构>.dmg`
+- `CatPointer-v1.5.3-macOS-<架构>.zip`
 - `SHA256SUMS.txt`
 
 打包后可运行完整自检：
@@ -130,6 +131,9 @@ dist/CatPointer.app/Contents/MacOS/CatPointer --self-test
 ```
 
 运行前请先退出其他 CatPointer 实例。自检会临时注册两类光标，检查全部动画帧、速度档位与恢复流程，并在结束前恢复原系统指针。
+
+`make package` 会短暂打开 Finder 以保存 DMG 窗口布局，因此需要在已经登录的
+macOS 桌面会话中执行；普通编译和测试不依赖 Finder。
 
 ## 原画与许可证
 

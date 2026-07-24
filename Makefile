@@ -10,6 +10,9 @@ VIDEO_FRAME_EXTRACTOR := $(TEST_DIR)/extract_video_frames
 FRAME_LIMIT_PROBE := $(TEST_DIR)/probe_frame_limit
 README_PREVIEW_TOOL := $(TEST_DIR)/build_readme_preview
 README_PREVIEW := $(PROJECT_DIR)/Validation/catpointer-demo.gif
+DMG_BACKGROUND_TOOL := $(TEST_DIR)/build_dmg_background
+DMG_BACKGROUND_DIR := $(PROJECT_DIR)/.build/dmg-background
+DMG_BACKGROUND := $(DMG_BACKGROUND_DIR)/background.tiff
 
 CC := clang
 CFLAGS := -fobjc-arc -fblocks -fmodules -fmodules-cache-path=$(MODULE_CACHE) \
@@ -24,7 +27,7 @@ APP_SOURCES := \
 	Sources/CatPointer/SystemCursorRegistrar.m
 
 .PHONY: all release debug test diagnostics frame-limit-probe app-icon \
-	readme-preview clean package
+	readme-preview dmg-background clean package
 
 all: release
 
@@ -80,6 +83,20 @@ $(README_PREVIEW_TOOL): Tools/build_readme_preview.m
 
 readme-preview: $(README_PREVIEW_TOOL)
 	$(README_PREVIEW_TOOL) "$(PROJECT_DIR)" "$(README_PREVIEW)"
+
+$(DMG_BACKGROUND_TOOL): Tools/build_dmg_background.m
+	@mkdir -p $(TEST_DIR) $(MODULE_CACHE)
+	$(CC) $(CFLAGS) -O2 Tools/build_dmg_background.m \
+		-framework AppKit -o $@
+
+dmg-background: $(DMG_BACKGROUND_TOOL)
+	@mkdir -p $(DMG_BACKGROUND_DIR)
+	$(DMG_BACKGROUND_TOOL) 1 "$(DMG_BACKGROUND_DIR)/background.png" 1x
+	$(DMG_BACKGROUND_TOOL) 2 "$(DMG_BACKGROUND_DIR)/background@2x.png" 2x
+	/usr/bin/tiffutil -cathidpicheck \
+		"$(DMG_BACKGROUND_DIR)/background.png" \
+		"$(DMG_BACKGROUND_DIR)/background@2x.png" \
+		-out "$(DMG_BACKGROUND)"
 
 app-icon:
 	./Scripts/build-app-icon.sh

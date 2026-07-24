@@ -7,7 +7,7 @@ MASTER_PATH="$PROJECT_DIR/Resources/AppIcon.png"
 ICONSET_DIR="$PROJECT_DIR/.build/AppIcon.iconset"
 ICNS_PATH="$PROJECT_DIR/Resources/CatPointer.icns"
 BACKGROUND_PATH="$PROJECT_DIR/Resources/IconSource/AppIconBackground-chroma.png"
-SUBJECT_PATH="$PROJECT_DIR/Resources/Cursors/default/26.png"
+SUBJECT_PATH="$PROJECT_DIR/Resources/Cursors/default/120.png"
 
 mkdir -p "$PROJECT_DIR/.build"
 rm -rf "$ICONSET_DIR"
