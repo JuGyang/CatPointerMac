@@ -1,135 +1,139 @@
-# 猫标 CatPointer for macOS
+# CatPointer for macOS
 
-这是一个原生 macOS 菜单栏应用，把 HappyCadogt 的“猫标”动画真正注册为
-WindowServer 系统光标。它不是盖在鼠标上方的悬浮窗口：Finder、文本框和其他
-应用看到的就是替换后的系统光标。
+<p align="center">
+  <img src="Validation/catpointer-original-preview.png" width="560" alt="CatPointer animated cursor preview">
+</p>
 
-当前替换两类常用光标：
+<p align="center">
+  A native animated cat cursor for macOS — smooth, lightweight, and designed not to interfere with normal pointer use.
+</p>
 
-- Arrow：普通箭头及 macOS 对应别名。
-- IBeam：文字输入光标及 macOS 对应别名。
+<p align="center">
+  <a href="README.zh-CN.md">简体中文</a>
+  ·
+  <a href="https://github.com/JuGyang/CatPointerMac/releases/latest">Download</a>
+  ·
+  <a href="LICENSE">MIT License</a>
+</p>
 
-应用启动后立即安装猫标；菜单栏和“设置”窗口中可以暂停、重新应用，并通过
-滑杆调整尺寸与小猫动作速度。正常退出时会恢复启动前备份的系统光标。
+## Highlights
 
-## 外观与素材
+- Replaces the macOS Arrow and I-beam cursors at the WindowServer level.
+- Uses the original HappyCadogt cat animation instead of a redrawn approximation.
+- Offers five cursor sizes and four friendly animation-speed levels: Slow, Medium, Fast, and Extreme.
+- Applies settings immediately while avoiding unnecessary cursor rebuilds.
+- Runs as a native menu bar app with no mouse-event interception, overlay window, driver, or background helper.
+- Restores the original system cursors when paused or exited normally.
 
-光标图由原作者
-[HappyCadogt（Bilibili @406949928）](https://space.bilibili.com/406949928)
-设计和制作。本项目使用
-[Tseshongfeeshur/cat-cursors](https://github.com/Tseshongfeeshur/cat-cursors)
-中的原始动画帧，固定到提交
-[`d3d6ca1a31510f2e5dcf2b69155fb1a5294978e2`](https://github.com/Tseshongfeeshur/cat-cursors/commit/d3d6ca1a31510f2e5dcf2b69155fb1a5294978e2)。
+CatPointer uses macOS private cursor-registration APIs. A future macOS update may change or remove these APIs; if registration is unavailable, the app stops safely and reports an error.
 
-macOS 的私有动画光标注册接口最多接受 24 帧，因此 Arrow 和 IBeam 都使用系统
-稳定上限 24 帧。四档速度共用首帧锚定的四舍五入等距采样；相邻源帧间隔始终是
-5/6 帧，相比简单向下取整，完整序列的像素重建误差降低约 11.8% / 13.6%。
-没有重新手绘或用近似图形替代原作。应用启动和自检时还会校验整套配置与 PNG
-原文件的固定 SHA-256，确保打包素材没有被悄悄替换。
+## System requirements
 
-## 应用图标
+| Requirement | Supported |
+| --- | --- |
+| macOS | macOS 13 Ventura or later |
+| Processor | Apple Silicon (arm64) for the prebuilt release |
+| Permissions | No Accessibility, Screen Recording, or Input Monitoring permission required |
+| Distribution | Ad-hoc signed; not Apple-notarized |
 
-Finder、Launchpad 和系统“打开方式”现在会显示完整的 CatPointer 应用图标。
-图标主体直接使用原作 `Resources/Cursors/default/26.png` 的箭头与小猫，没有
-让生成模型重画角色；柔和的桃橙色圆角底板用于保证浅色、深色背景和 16px 小
-尺寸下仍能看清。
+Intel Macs are not included in the current prebuilt release. The source can be compiled on a compatible Intel Mac with Xcode Command Line Tools, but that configuration is not part of the tested release matrix.
 
-应用图标包含 16、32、128、256、512 和 1024 像素及对应 Retina 表示，最终
-打包为 `Resources/CatPointer.icns`。可用 `make app-icon` 从保留的母版来源
-重新生成。CatPointer 是菜单栏应用，因此运行时不会常驻 Dock；这是菜单栏应用
-的预期行为，不代表缺少应用图标。
+## Download and install
 
-## 速度与资源
+Download the latest release from the [Releases page](https://github.com/JuGyang/CatPointerMac/releases/latest).
 
-所有档位均由 WindowServer 直接播放。应用不使用逐帧定时器、鼠标事件监听、
-跟随悬浮窗或事件注入，因此不会拦截点击、拖拽、滚轮、窗口缩放与文本选择。
+### Recommended: DMG
 
-- 慢速：保留 Arrow 4.29 秒、IBeam 4.62 秒的原作循环速度。
-- 适中：12 FPS。
-- 快速：20 FPS。
-- 极致（默认）：30 FPS。
+1. Download `CatPointer-v1.5.1-macOS-arm64.dmg`.
+2. Open the disk image.
+3. Drag **CatPointer** into **Applications**.
+4. Open CatPointer from Applications.
 
-界面不需要理解 FPS：拖动四档“小猫动作速度”滑杆即可。尺寸滑杆提供
-80% / 90% / 100% / 110% / 120% 五档。拖动时当前档位、刻度高亮和状态文字
-会立即跟随，松手后的下一次主循环只应用最终档位，避免反复重建系统光标造成
-卡顿。方向键可逐档调整，长按时会合并短时间内的重复输入；开关、状态和菜单
-勾选在操作后立即更新，不会先跳回旧值。
+Because this community build is not notarized, macOS may block the first launch. Control-click the app and choose **Open**. If macOS still blocks it, go to **System Settings → Privacy & Security** and choose **Open Anyway** for CatPointer.
 
-暂停猫标后仍可调整设置，新值会保存并在重新启用时一次应用。设置窗口还提供
-“恢复默认”、内联检查结果、Esc 关闭，并会记住上次窗口位置。应用在设置窗口
-出现前准备好五档尺寸；其他尺寸直接从 100% Retina 原画胶片逐帧缩放，单元
-测试确认与逐张源图渲染的像素完全相同。固定缓存只保存 5 个尺寸 × 2 类指针，
-图像成本约 16.7 MiB。速度切换复用同一组图像，仅修改系统播放时间。系统唤醒、
-会话恢复和显示器变化通知也会合并处理。Apple Silicon 实测应用空闲 CPU 为
-0.0%。
+### Alternative: ZIP
 
-详细来源、修改说明与第三方 MIT 许可证见
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 和
-[`Resources/Licenses/cat-cursors-MIT.txt`](Resources/Licenses/cat-cursors-MIT.txt)。
-这些文件也会一起打进应用包。
+Download `CatPointer-v1.5.1-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
 
-## 构建与运行
-
-需要 Xcode Command Line Tools 和 macOS 13 或更高版本：
+The release also includes `SHA256SUMS.txt`. Verify a download with:
 
 ```bash
+shasum -a 256 CatPointer-v1.5.1-macOS-arm64.dmg
+```
+
+## Use
+
+CatPointer installs the animated cursors as soon as it starts. Use its menu bar icon to:
+
+- open Settings;
+- pause or re-enable CatPointer;
+- restore the original cursors and quit.
+
+In Settings, drag the **Cursor size** and **Cat animation speed** sliders. Changes are reflected in the interface immediately and applied to the cursor without an artificial waiting period.
+
+## Performance and input safety
+
+WindowServer plays the animation. CatPointer does not use a per-frame app timer, listen to mouse events, place a floating window over the pointer, or inject input. Clicking, dragging, scrolling, resizing windows, and selecting text continue to use the normal macOS input path.
+
+| Speed | Playback |
+| --- | --- |
+| Slow | Original animation timing |
+| Medium | 12 FPS |
+| Fast | 20 FPS |
+| Extreme | 30 FPS |
+
+Cursor sizes are available at 80%, 90%, 100%, 110%, and 120%. A fixed cache holds the five sizes for Arrow and I-beam, using approximately 16.7 MiB. In testing on Apple Silicon, idle CPU usage reads 0.0%.
+
+## Restore the system cursor
+
+The original cursor registrations are backed up before CatPointer installs its animation. They are restored when you pause CatPointer, choose **Quit and restore system cursors**, exit normally, or when the next launch detects a backup left by an interrupted session.
+
+You can also restore explicitly:
+
+```bash
+/Applications/CatPointer.app/Contents/MacOS/CatPointer --restore
+```
+
+Avoid force-quitting the app while CatPointer is enabled. If another app briefly retains the last animated frame after exit, moving the pointer causes macOS to fetch the restored cursor.
+
+## Build from source
+
+Requirements:
+
+- macOS 13 or later
+- Xcode Command Line Tools
+- `clang`, `make`, `codesign`, and `hdiutil`
+
+```bash
+git clone https://github.com/JuGyang/CatPointerMac.git
+cd CatPointerMac
 make test
-make app-icon
-./Scripts/package-app.sh
-open dist/CatPointer.app
+make package
 ```
 
-构建结果位于 `dist/CatPointer.app`。这是本地 ad-hoc 签名的应用；首次打开时，
-macOS 可能会显示常规的来源安全提示。当前随项目交付的预构建包面向 Apple
-Silicon（arm64）；从源码构建时会生成当前 Mac 架构的版本。
+Release artifacts are written to `dist/`:
 
-## 权限
+- `CatPointer.app`
+- `CatPointer-v1.5.1-macOS-<architecture>.dmg`
+- `CatPointer-v1.5.1-macOS-<architecture>.zip`
+- `SHA256SUMS.txt`
 
-替换光标不需要“辅助功能”、屏幕录制或输入监控权限。应用通过 CoreGraphics /
-CoreCursor 的私有 CGS 接口把动画帧注册给 WindowServer，并不读取输入框内容、
-点击内容、键盘内容或屏幕画面。
-
-## 恢复与安全
-
-启动安装前，应用会备份被替换的系统光标。以下操作都会恢复原光标：
-
-- 在菜单栏暂停猫标；
-- 选择“退出并恢复系统指针”；
-- 正常退出或收到 `SIGTERM` / `SIGINT`；
-- 下次启动时发现上次遗留的备份。
-
-如果前台应用仍缓存着退出前的最后一帧猫标，CatPointer 会先隐藏这张旧帧；用户
-下一次移动鼠标时，系统会从已经恢复的 Arrow / IBeam 注册表重新取回原光标。
-
-也可以从终端显式恢复：
-
-```bash
-dist/CatPointer.app/Contents/MacOS/CatPointer --restore
-```
-
-系统升级可能改变或移除这些未公开接口。接口不可用时，应用会停止安装并报告
-错误；它不安装驱动、系统扩展或后台辅助进程，也不会修改系统文件。建议始终用
-菜单栏的“退出并恢复系统指针”正常退出，避免强制结束进程。
-
-## 许可证
-
-CatPointer 自有的源代码和文档采用
-[MIT License](LICENSE)。猫标原画、动画帧，以及包含该原画的图标和预览图不属于
-CatPointer 贡献者原创；本项目依据上游 `cat-cursors` 仓库标示的 MIT License
-使用并保留原作者归属。完整范围、固定来源版本和许可文本见
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。分发源码或应用包时请同时
-保留项目许可证和第三方许可文件。
-
-## 自检
-
-打包后可运行安装/恢复自检：
+Run the integration self-test after packaging:
 
 ```bash
 dist/CatPointer.app/Contents/MacOS/CatPointer --self-test
 ```
 
-自检会临时安装 Arrow 与 IBeam 动画、读取 WindowServer 当前光标验证结果，
-让新的 AppKit 客户端重新解析两类系统光标，逐像素核对 24 帧胶片，逐项验证
-慢速、适中、快速、极致四档速度、重复应用缓存和安全备份，然后恢复原光标并
-以 JSON 输出检查结果。
-为避免两个实例同时管理系统光标，请先从菜单栏退出正在运行的猫标。
+Run the self-test only when another CatPointer instance is not active. It temporarily registers both cursor types, validates all animation frames and speed levels, and restores the original cursors before exiting.
+
+## Artwork and licenses
+
+The cursor artwork was created by [HappyCadogt (Bilibili @406949928)](https://space.bilibili.com/406949928). This project uses the original animation frames from [`Tseshongfeeshur/cat-cursors`](https://github.com/Tseshongfeeshur/cat-cursors) at commit [`d3d6ca1`](https://github.com/Tseshongfeeshur/cat-cursors/commit/d3d6ca1a31510f2e5dcf2b69155fb1a5294978e2). The frames are sampled to the stable macOS limit of 24 animation frames; they are not redrawn.
+
+CatPointer source code and documentation are released under the [MIT License](LICENSE). Artwork attribution, upstream licensing, and the exact source revision are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The project and third-party license files are included inside every packaged app.
+
+## Security and privacy
+
+CatPointer does not read keystrokes, clicks, text fields, or screen contents. It does not install a driver, system extension, launch daemon, or privileged helper. Cursor assets and configuration files are checked against pinned SHA-256 values during startup and self-test.
+
+Please report reproducible bugs through [GitHub Issues](https://github.com/JuGyang/CatPointerMac/issues).
