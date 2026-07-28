@@ -193,6 +193,98 @@ int main(void) {
             @"9833bee08c269031d25fceadbb96a9058d3139a50185a3a06fe24e6837560453"
         );
 
+        NSArray<NSArray *> *additionalRoles = @[
+            @[
+                @"pointer",
+                @94,
+                @3.099,
+                NSStringFromSize(NSMakeSize(64, 48)),
+                NSStringFromPoint(NSMakePoint(6, 6)),
+                @"a6d8bb6790103fa9e241aa5318a391d48f95c1294c6d97d5005f54a0bcfc94b6",
+            ],
+            @[
+                @"progress",
+                @45,
+                @1.482,
+                NSStringFromSize(NSMakeSize(72, 72)),
+                NSStringFromPoint(NSMakePoint(6, 6)),
+                @"12234f1e600f160b07bc7a963b83a9ed58e396ba4a540c073979dae578811537",
+            ],
+            @[
+                @"wait",
+                @44,
+                @1.449,
+                NSStringFromSize(NSMakeSize(64, 64)),
+                NSStringFromPoint(NSMakePoint(32.5, 33)),
+                @"099698b0f63752ffd82f049e82deb292a78f4b4f9225eb068a6ea23a14e6a7fa",
+            ],
+            @[
+                @"size_hor",
+                @127,
+                @4.191,
+                NSStringFromSize(NSMakeSize(64, 56)),
+                NSStringFromPoint(NSMakePoint(31, 42)),
+                @"8e5eca64b621064c751990ad04ed4d833bd9fde874903d89188334f11a3a6a2f",
+            ],
+            @[
+                @"size_ver",
+                @164,
+                @5.412,
+                NSStringFromSize(NSMakeSize(64, 64)),
+                NSStringFromPoint(NSMakePoint(15, 32)),
+                @"75a878ef3757873e9b02d2777271d428379272ea8a8d6c6399650c9cdedf4ed8",
+            ],
+        ];
+        for (NSArray *entry in additionalRoles) {
+            NSString *role = entry[0];
+            error = nil;
+            CPCursorAssetSequence *sequence =
+                [CPCursorAssetSequence sequenceForRole:role
+                                                 error:&error];
+            CPAssert(
+                error == nil,
+                [NSString stringWithFormat:
+                    @"%@ artwork validates", role]
+            );
+            CPValidateSequence(
+                sequence,
+                [entry[1] unsignedIntegerValue],
+                [entry[2] doubleValue],
+                NSSizeFromString(entry[3]),
+                NSPointFromString(entry[4]),
+                entry[5]
+            );
+
+            error = nil;
+            CPCursorAssetSequence *smoothSequence =
+                [CPCursorAssetSequence
+                    sequenceForRole:role
+             optimizedForSmoothness:YES
+                              error:&error];
+            CPAssert(
+                error == nil,
+                [NSString stringWithFormat:
+                    @"%@ smooth artwork validates", role]
+            );
+            CPValidateSequence(
+                smoothSequence,
+                [entry[1] unsignedIntegerValue],
+                [entry[2] doubleValue],
+                NSSizeFromString(entry[3]),
+                NSPointFromString(entry[4]),
+                entry[5]
+            );
+            CPAssert(
+                smoothSequence.isMotionOptimized &&
+                [NSSet setWithArray:
+                    smoothSequence.selectedSourceFrameNumbers].count ==
+                    CPSystemCursorFrameLimit,
+                [NSString stringWithFormat:
+                    @"%@ smooth sampling uses 24 timeline positions",
+                    role]
+            );
+        }
+
         CPAssert(
             [defaultSequence.selectedSourceFrameNumbers.firstObject
                 unsignedIntegerValue] == 1 &&
@@ -268,7 +360,7 @@ int main(void) {
             @"text motion-aware selection remains pinned"
         );
 
-        puts("PASS: original artwork, 24-frame filmstrips, and smooth sampling validated");
+        puts("PASS: all original cursor actions, 24-frame filmstrips, and smooth sampling validated");
     }
     return EXIT_SUCCESS;
 }

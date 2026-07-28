@@ -17,9 +17,10 @@ cursor theme.
   `Resources/Licenses/cat-cursors-MIT.txt` in the source tree and at
   `Contents/Resources/Licenses/cat-cursors-MIT.txt` in the packaged app.
 
-The included `default` and `text` frame sequences come from the corresponding
-animated cursor sources in that revision. CatPointer preserves the original
-artwork. At runtime it uniformly samples each source sequence to 24 frames,
+The included `default`, `text`, `pointer`, `progress`, `wait`, `size_hor`, and
+`size_ver` frame sequences come from the corresponding animated cursor
+sources in that revision. CatPointer preserves the original artwork. At
+runtime it uniformly samples each source sequence to 24 frames,
 the maximum supported by the macOS private cursor-registration interface,
 using only unmodified source images. All four user-facing speeds reuse the
 same motion-faithful selection of original frames. “Slow” retains the source
