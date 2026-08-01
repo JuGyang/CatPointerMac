@@ -45,7 +45,7 @@ Download the latest release from the [Releases page](https://github.com/JuGyang/
 
 ### Recommended: DMG
 
-1. Download `CatPointer-v1.6.0-macOS-arm64.dmg`.
+1. Download `CatPointer-v1.6.1-macOS-arm64.dmg`.
 2. Open the disk image.
 3. Drag **CatPointer** into **Applications**.
 4. Open CatPointer from Applications.
@@ -54,15 +54,15 @@ Because this community build is not notarized, macOS may block the first launch.
 
 ### Alternative: ZIP
 
-Download `CatPointer-v1.6.0-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
+Download `CatPointer-v1.6.1-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
 
 The release also includes `SHA256SUMS.txt`. Verify a download with:
 
 ```bash
-shasum -a 256 CatPointer-v1.6.0-macOS-arm64.dmg
+shasum -a 256 CatPointer-v1.6.1-macOS-arm64.dmg
 ```
 
-See the [v1.6.0 validation report](Validation/TEST_REPORT-v1.6.0.md) for the
+See the [v1.6.1 validation report](Validation/TEST_REPORT-v1.6.1.md) for the
 tested environment, installer-layout coverage, and artifact checksums.
 
 ## Use
@@ -90,7 +90,7 @@ WindowServer plays the animation. CatPointer does not use a per-frame app timer,
 
 | Speed | Playback |
 | --- | --- |
-| Slow | Original animation timing |
+| Slow | 8 FPS |
 | Medium | 12 FPS |
 | Fast | 20 FPS |
 | Extreme | 30 FPS |
@@ -127,8 +127,8 @@ make package
 Release artifacts are written to `dist/`:
 
 - `CatPointer.app`
-- `CatPointer-v1.6.0-macOS-<architecture>.dmg`
-- `CatPointer-v1.6.0-macOS-<architecture>.zip`
+- `CatPointer-v1.6.1-macOS-<architecture>.dmg`
+- `CatPointer-v1.6.1-macOS-<architecture>.zip`
 - `SHA256SUMS.txt`
 
 Run the integration self-test after packaging:

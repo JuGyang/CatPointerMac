@@ -143,7 +143,7 @@ static NSString *CPCanonicalAnimationProfile(NSString *profile) {
 static CGFloat CPFramesPerSecondForProfile(NSString *profile) {
     NSString *canonical = CPCanonicalAnimationProfile(profile);
     if ([canonical isEqualToString:CPAnimationProfileSlow]) {
-        return 0;
+        return 8.0;
     }
     if ([canonical isEqualToString:CPAnimationProfileMedium]) {
         return 12.0;

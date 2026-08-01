@@ -1,6 +1,6 @@
-# CatPointer v1.6.0 validation report
+# CatPointer v1.6.1 validation report
 
-Validation date: 2026-07-28
+Validation date: 2026-08-01
 
 Test host: Apple M4, macOS 26.3.2 (25D2140), Apple Silicon (arm64)
 
@@ -19,6 +19,10 @@ to seven:
 
 Every action uses the original PNG sequence from the pinned upstream revision.
 No missing action was redrawn or inferred from another cursor.
+
+Classic Cat Slow now plays the existing 24 registered original-artwork frames
+at 8 FPS instead of stretching them across the original 4.29–4.62 second
+loops. Medium, Fast, and Extreme remain 12, 20, and 30 FPS.
 
 ## Source artwork
 
@@ -58,12 +62,14 @@ against a pinned SHA-256 digest before rendering.
   20 FPS test duration.
 - All five size levels and all four speed levels passed repeated live
   re-registration.
-- Maximum cached size switch: 66.4 ms.
-- Maximum speed switch: 57.9 ms.
+- Slow, Medium, Fast, and Extreme registered 24 frames at 8, 12, 20, and
+  30 FPS; Slow read back a 125 ms frame duration from WindowServer.
+- Maximum cached size switch: 82.6 ms.
+- Maximum speed switch: 62.8 ms.
 - AppKit resolved the installed Arrow and text images from a fresh process.
 - Original cursor backups survived repeated changes and were restored before
   the self-test exited.
-- A six-second idle sample after startup reported 0.0% CPU and 97,408 KiB
+- An idle sample after startup reported 0.0% CPU and 98,000 KiB
   resident memory after the bounded seven-role size cache had warmed.
 - `clang --analyze`: no source diagnostics.
 - `codesign --verify --deep --strict`: passed for the packaged app and the app
@@ -77,9 +83,9 @@ against a pinned SHA-256 digest before rendering.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `CatPointer-v1.6.0-macOS-arm64.dmg` | `f32b88c05fa9a8243cdde6b0fe3f445b4fb3f6a59cae1790c200935a886f49e3` |
-| `CatPointer-v1.6.0-macOS-arm64.zip` | `2feb192e99fd5ecf16298050a49645897d9fd5d9070721a50bdbf746994269b5` |
-| Packaged `CatPointer` executable | `e452107a2532a276f3f9939c7e5fb01b58285b83366f84950c085db2b7933b16` |
+| `CatPointer-v1.6.1-macOS-arm64.dmg` | `32f47ab2d5226652a39e415e1c3c6d122ce83506580be5e029246b19daef1c0e` |
+| `CatPointer-v1.6.1-macOS-arm64.zip` | `1040ac1e68c840a8a55d008ff8404c56ecd0fd47270ecd330693aa45a51b78d8` |
+| Packaged `CatPointer` executable | `66804f5670365961694500ce748563038c8266e7165984826b6a0cefe79c84ea` |
 
-The packaged app reports version 1.6.0 (build 10), requires macOS 13 or later,
+The packaged app reports version 1.6.1 (build 11), requires macOS 13 or later,
 is ad-hoc signed, and includes the project and third-party license files.

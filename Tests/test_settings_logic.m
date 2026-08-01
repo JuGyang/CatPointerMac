@@ -128,10 +128,11 @@ static void CPTestCanonicalSettings(void) {
         @"未知速度应安全回到默认极致档"
     );
     CPTestRequire(
+        CPFramesPerSecondForProfile(CPAnimationProfileSlow) == 8.0 &&
         CPFramesPerSecondForProfile(CPAnimationProfileMedium) == 12.0 &&
         CPFramesPerSecondForProfile(CPAnimationProfileFast) == 20.0 &&
         CPFramesPerSecondForProfile(CPAnimationProfileExtreme) == 30.0,
-        @"三档固定播放速度错误"
+        @"四档固定播放速度错误"
     );
 
     NSArray<NSNumber *> *ordered = CPSizeStepsStartingAtScale(0.9);

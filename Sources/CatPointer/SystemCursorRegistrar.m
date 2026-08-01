@@ -1657,7 +1657,7 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
             : [self canonicalPixelDataForImage:
                 (__bridge CGImageRef)baselineText.images[0]];
         for (NSNumber *requestedFPS in
-             @[@0.0, @12.0, @20.0, @30.0]) {
+             @[@8.0, @12.0, @20.0, @30.0]) {
             CGFloat fps = requestedFPS.doubleValue;
             CFAbsoluteTime speedSwitchBegan =
                 CFAbsoluteTimeGetCurrent();
