@@ -181,12 +181,12 @@ typedef CGError (*CPGetGlobalCursorDataFunction)(
     if (self) {
         _scale = 1.0;
         _targetFramesPerSecond = 0;
-        // Exactly five size stops × two cursor roles (about 16.7 MiB).
-        // A strong, bounded dictionary makes the first adjustment as fast as
-        // later ones; NSCache may otherwise evict entries unpredictably.
+        // Keep rendered templates for the five user-facing size stops.
+        // The cache trades a bounded amount of memory for instant slider
+        // commits; WindowServer then owns playback without an app-side timer.
         _renderTemplateCache = [NSMutableDictionary dictionary];
         _assetSequenceCache = [NSCache new];
-        _assetSequenceCache.countLimit = 2;
+        _assetSequenceCache.countLimit = 7;
         dispatch_queue_attr_t prewarmAttributes =
             dispatch_queue_attr_make_with_qos_class(
                 DISPATCH_QUEUE_SERIAL,
@@ -359,6 +359,47 @@ typedef CGError (*CPGetGlobalCursorDataFunction)(
                 @([identifier isEqualToString:
                     @"com.apple.coregraphics.IBeam"]),
         }];
+    }
+    NSArray<NSArray *> *additionalRoles = @[
+        @[@"progress", @[
+            @"com.apple.cursor.14",
+            @"com.apple.cursor.15",
+            @"com.apple.cursor.16",
+        ]],
+        @[@"wait", @[@"com.apple.cursor.4"]],
+        @[@"text", @[@"com.apple.cursor.26"]],
+        @[@"size_hor", @[
+            @"com.apple.cursor.17",
+            @"com.apple.cursor.18",
+            @"com.apple.cursor.19",
+            @"com.apple.cursor.27",
+            @"com.apple.cursor.28",
+            @"com.apple.cursor.38",
+        ]],
+        @[@"pointer", @[
+            @"com.apple.cursor.2",
+            @"com.apple.cursor.13",
+        ]],
+        @[@"size_ver", @[
+            @"com.apple.cursor.21",
+            @"com.apple.cursor.22",
+            @"com.apple.cursor.23",
+            @"com.apple.cursor.31",
+            @"com.apple.cursor.32",
+            @"com.apple.cursor.36",
+        ]],
+    ];
+    for (NSArray *entry in additionalRoles) {
+        NSString *role = entry[0];
+        for (NSString *identifier in entry[1]) {
+            [definitions addObject:@{
+                @"identifier": identifier,
+                @"backup": [@"com.local.catpointer.backup."
+                    stringByAppendingString:identifier],
+                @"role": role,
+                @"required": @NO,
+            }];
+        }
     }
     return definitions.copy;
 }
@@ -1042,7 +1083,15 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
                     NSString *,
                     CPCursorSnapshot *
                 > *roleCache = [NSMutableDictionary dictionary];
-                for (NSString *role in @[@"default", @"text"]) {
+                for (NSString *role in @[
+                    @"default",
+                    @"text",
+                    @"pointer",
+                    @"progress",
+                    @"wait",
+                    @"size_hor",
+                    @"size_ver",
+                ]) {
                     NSError *error = nil;
                     if ([strongSelf
                             customSnapshotForDefinition:@{
@@ -1608,7 +1657,7 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
             : [self canonicalPixelDataForImage:
                 (__bridge CGImageRef)baselineText.images[0]];
         for (NSNumber *requestedFPS in
-             @[@0.0, @12.0, @20.0, @30.0]) {
+             @[@8.0, @12.0, @20.0, @30.0]) {
             CGFloat fps = requestedFPS.doubleValue;
             CFAbsoluteTime speedSwitchBegan =
                 CFAbsoluteTimeGetCurrent();
@@ -1700,6 +1749,9 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
     BOOL textLive = NO;
     BOOL activationSucceeded = NO;
     BOOL activeTextRolePreserved = NO;
+    BOOL allActionRolesInstalled = NO;
+    NSDictionary<NSString *, NSDictionary<NSString *, id> *> *
+        actionRoleCoverage = @{};
     NSError *rolePreservationError = nil;
     NSString *arrowIdentifier =
         @"com.apple.coregraphics.Arrow";
@@ -1772,6 +1824,56 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
             fabs(verifiedTextAnimation.frameDuration -
                  1.0 / testFramesPerSecond) < 0.001;
 
+        NSArray<NSString *> *expectedActionRoles = @[
+            @"default",
+            @"text",
+            @"pointer",
+            @"progress",
+            @"wait",
+            @"size_hor",
+            @"size_ver",
+        ];
+        NSMutableDictionary *coverage =
+            [NSMutableDictionary dictionary];
+        allActionRolesInstalled = YES;
+        for (NSString *role in expectedActionRoles) {
+            NSUInteger installedIdentifiers = 0;
+            BOOL roleMatches = YES;
+            for (NSDictionary<NSString *, id> *definition in
+                 [self cursorDefinitions]) {
+                if (![definition[@"role"] isEqualToString:role]) {
+                    continue;
+                }
+                NSString *identifier = definition[@"identifier"];
+                CPCursorSnapshot *expected =
+                    _customSnapshots[identifier];
+                if (expected == nil) {
+                    continue;
+                }
+                installedIdentifiers++;
+                CPCursorSnapshot *installed =
+                    [self snapshotForIdentifier:identifier];
+                if (![self snapshot:installed
+                     matchesCustomSnapshot:expected] ||
+                    installed.frameCount !=
+                        CPSystemCursorFrameLimit ||
+                    fabs(installed.frameDuration -
+                         1.0 / testFramesPerSecond) >= 0.001) {
+                    roleMatches = NO;
+                }
+            }
+            BOOL rolePassed =
+                installedIdentifiers > 0 && roleMatches;
+            coverage[role] = @{
+                @"installedIdentifiers":
+                    @(installedIdentifiers),
+                @"passed": @(rolePassed),
+            };
+            allActionRolesInstalled =
+                allActionRolesInstalled && rolePassed;
+        }
+        actionRoleCoverage = coverage.copy;
+
         // A background CLI cannot force the foreground application's cached
         // pointer image to refresh without synthesizing mouse input. Require
         // the WindowServer activation request itself to succeed, and retain
@@ -1832,6 +1934,36 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
             sequenceForRole:@"text"
      optimizedForSmoothness:YES
                       error:nil];
+    NSArray<NSArray *> *additionalArtwork = @[
+        @[
+            @"pointer",
+            @94,
+            @"a6d8bb6790103fa9e241aa5318a391d48f95c1294c6d97d5005f54a0bcfc94b6",
+        ],
+        @[
+            @"progress",
+            @45,
+            @"12234f1e600f160b07bc7a963b83a9ed58e396ba4a540c073979dae578811537",
+        ],
+        @[
+            @"wait",
+            @44,
+            @"099698b0f63752ffd82f049e82deb292a78f4b4f9225eb068a6ea23a14e6a7fa",
+        ],
+        @[
+            @"size_hor",
+            @127,
+            @"8e5eca64b621064c751990ad04ed4d833bd9fde874903d89188334f11a3a6a2f",
+        ],
+        @[
+            @"size_ver",
+            @164,
+            @"75a878ef3757873e9b02d2777271d428379272ea8a8d6c6399650c9cdedf4ed8",
+        ],
+    ];
+    NSMutableDictionary<NSString *, NSDictionary<NSString *, id> *> *
+        additionalArtworkDiagnostics =
+            [NSMutableDictionary dictionary];
     BOOL artworkValidated =
         defaultArtwork.sourceFrameCount == 130 &&
         textArtwork.sourceFrameCount == 140 &&
@@ -1854,6 +1986,45 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
             unsignedIntegerValue] == 126 &&
         [smoothTextArtwork.selectedSourceFrameNumbers.lastObject
             unsignedIntegerValue] == 135;
+    for (NSArray *entry in additionalArtwork) {
+        NSString *role = entry[0];
+        CPCursorAssetSequence *artwork =
+            [CPCursorAssetSequence sequenceForRole:role error:nil];
+        CPCursorAssetSequence *smoothArtwork =
+            [CPCursorAssetSequence
+                sequenceForRole:role
+         optimizedForSmoothness:YES
+                          error:nil];
+        BOOL roleArtworkValidated =
+            artwork.sourceFrameCount ==
+                [entry[1] unsignedIntegerValue] &&
+            artwork.registeredFrameCount ==
+                CPSystemCursorFrameLimit &&
+            [artwork.sourceAssetSHA256
+                isEqualToString:entry[2]];
+        BOOL roleSmoothValidated =
+            smoothArtwork.isMotionOptimized &&
+            smoothArtwork.selectedSourceFrameNumbers.count ==
+                CPSystemCursorFrameLimit &&
+            [NSSet setWithArray:
+                smoothArtwork.selectedSourceFrameNumbers].count ==
+                CPSystemCursorFrameLimit;
+        artworkValidated =
+            artworkValidated && roleArtworkValidated;
+        smoothSamplingValidated =
+            smoothSamplingValidated && roleSmoothValidated;
+        additionalArtworkDiagnostics[role] = @{
+            @"artworkValidated": @(roleArtworkValidated),
+            @"smoothSamplingValidated":
+                @(roleSmoothValidated),
+            @"artwork": artwork == nil
+                ? @{@"present": @NO}
+                : artwork.diagnostics,
+            @"smoothArtwork": smoothArtwork == nil
+                ? @{@"present": @NO}
+                : smoothArtwork.diagnostics,
+        };
+    }
     BOOL passed = started && reapplied &&
         allSizeLevelsValidated &&
         allPlaybackProfilesValidated &&
@@ -1861,7 +2032,7 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
         arrowInstalled && textInstalled &&
         animationInstalled && arrowLive && textLive &&
         activationSucceeded && distinctLiveImages && artworkValidated &&
-        smoothSamplingValidated && restored;
+        smoothSamplingValidated && allActionRolesInstalled && restored;
     passed = passed && activeTextRolePreserved;
     if (!passed && error != NULL) {
         *error = startError ?: reapplyError ?: sizeSwitchError ?:
@@ -1886,6 +2057,9 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
         @"textInstalled": @(textInstalled),
         @"animated24Frames": @(animationInstalled),
         @"motionOptimized20FPS": @(animationInstalled),
+        @"allActionRolesInstalled":
+            @(allActionRolesInstalled),
+        @"actionRoleCoverage": actionRoleCoverage,
         @"arrowResolvedByAppKit": @(arrowLive),
         @"windowServerActivationSucceeded": @(activationSucceeded),
         @"activeTextRolePreservedAcrossSettingChange":
@@ -1951,6 +2125,8 @@ targetFramesPerSecond:(CGFloat)targetFramesPerSecond {
         smoothTextArtwork == nil
             ? @{@"present": @NO}
             : smoothTextArtwork.diagnostics;
+    result[@"additionalArtwork"] =
+        additionalArtworkDiagnostics.copy;
     @synchronized (_renderTemplateCache) {
         [_renderTemplateCache removeAllObjects];
     }

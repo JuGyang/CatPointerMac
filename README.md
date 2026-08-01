@@ -1,7 +1,7 @@
 # CatPointer for macOS
 
 <p align="center">
-  <img src="Validation/catpointer-demo.gif" width="560" alt="Animated preview of the CatPointer arrow and text cursors">
+  <img src="Validation/catpointer-demo.gif" width="720" alt="Animated preview of all seven CatPointer cursor actions">
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 ## Highlights
 
-- Replaces the macOS Arrow and I-beam cursors at the WindowServer level.
+- Replaces seven common macOS cursor actions at the WindowServer level: Arrow, I-beam, link, working in background, busy, horizontal resize, and vertical resize.
 - Uses the original HappyCadogt cat animation instead of a redrawn approximation.
 - Offers five cursor sizes and four friendly animation-speed levels: Slow, Medium, Fast, and Extreme.
 - Applies settings immediately while avoiding unnecessary cursor rebuilds.
@@ -45,7 +45,7 @@ Download the latest release from the [Releases page](https://github.com/JuGyang/
 
 ### Recommended: DMG
 
-1. Download `CatPointer-v1.5.3-macOS-arm64.dmg`.
+1. Download `CatPointer-v1.6.1-macOS-arm64.dmg`.
 2. Open the disk image.
 3. Drag **CatPointer** into **Applications**.
 4. Open CatPointer from Applications.
@@ -54,15 +54,15 @@ Because this community build is not notarized, macOS may block the first launch.
 
 ### Alternative: ZIP
 
-Download `CatPointer-v1.5.3-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
+Download `CatPointer-v1.6.1-macOS-arm64.zip`, extract it, and move `CatPointer.app` to Applications. The ZIP contains the same app as the DMG and is provided for automation and users who prefer archive downloads.
 
 The release also includes `SHA256SUMS.txt`. Verify a download with:
 
 ```bash
-shasum -a 256 CatPointer-v1.5.3-macOS-arm64.dmg
+shasum -a 256 CatPointer-v1.6.1-macOS-arm64.dmg
 ```
 
-See the [v1.5.3 validation report](Validation/TEST_REPORT-v1.5.3.md) for the
+See the [v1.6.1 validation report](Validation/TEST_REPORT-v1.6.1.md) for the
 tested environment, installer-layout coverage, and artifact checksums.
 
 ## Use
@@ -90,12 +90,12 @@ WindowServer plays the animation. CatPointer does not use a per-frame app timer,
 
 | Speed | Playback |
 | --- | --- |
-| Slow | Original animation timing |
+| Slow | 8 FPS |
 | Medium | 12 FPS |
 | Fast | 20 FPS |
 | Extreme | 30 FPS |
 
-Cursor sizes are available at 80%, 90%, 100%, 110%, and 120%. A fixed cache holds the five sizes for Arrow and I-beam, using approximately 16.7 MiB. In testing on Apple Silicon, idle CPU usage reads 0.0%.
+Cursor sizes are available at 80%, 90%, 100%, 110%, and 120%. A bounded cache pre-renders the user-facing size stops for all seven actions, so slider commits stay responsive without doing work on every animation frame. In testing on Apple Silicon, idle CPU usage reads 0.0%.
 
 ## Restore the system cursor
 
@@ -127,8 +127,8 @@ make package
 Release artifacts are written to `dist/`:
 
 - `CatPointer.app`
-- `CatPointer-v1.5.3-macOS-<architecture>.dmg`
-- `CatPointer-v1.5.3-macOS-<architecture>.zip`
+- `CatPointer-v1.6.1-macOS-<architecture>.dmg`
+- `CatPointer-v1.6.1-macOS-<architecture>.zip`
 - `SHA256SUMS.txt`
 
 Run the integration self-test after packaging:
@@ -137,7 +137,7 @@ Run the integration self-test after packaging:
 dist/CatPointer.app/Contents/MacOS/CatPointer --self-test
 ```
 
-Run the self-test only when another CatPointer instance is not active. It temporarily registers both cursor types, validates all animation frames and speed levels, and restores the original cursors before exiting.
+Run the self-test only when another CatPointer instance is not active. It temporarily registers all seven cursor actions, validates all animation frames, sizes, and speed levels, and restores the original cursors before exiting.
 
 `make package` opens Finder briefly to save the DMG window layout, so run that
 target from a logged-in macOS desktop session. Normal builds and tests do not

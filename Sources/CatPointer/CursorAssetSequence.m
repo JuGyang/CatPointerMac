@@ -9,6 +9,82 @@ const NSUInteger CPSystemCursorFrameLimit = 24;
 static NSString *const CPAssetErrorDomain =
     @"com.local.catpointer.cursor-assets";
 
+static NSDictionary<NSString *, id> *CPAssetMetadataForRole(
+    NSString *role
+) {
+    static NSDictionary<NSString *, NSDictionary<NSString *, id> *> *
+        metadata;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        metadata = @{
+            @"default": @{
+                @"frameCount": @130,
+                @"canvas": @240,
+                @"crop": NSStringFromRect(
+                    NSMakeRect(48, 48, 128, 120)
+                ),
+                @"sha256":
+                    @"407827d370a0df8ba228f98ce7f3def8a281d3fe902b001504107dca4819d2a4",
+            },
+            @"text": @{
+                @"frameCount": @140,
+                @"canvas": @240,
+                @"crop": NSStringFromRect(
+                    NSMakeRect(32, 48, 128, 104)
+                ),
+                @"sha256":
+                    @"9833bee08c269031d25fceadbb96a9058d3139a50185a3a06fe24e6837560453",
+            },
+            @"pointer": @{
+                @"frameCount": @94,
+                @"canvas": @240,
+                @"crop": NSStringFromRect(
+                    NSMakeRect(48, 48, 128, 96)
+                ),
+                @"sha256":
+                    @"a6d8bb6790103fa9e241aa5318a391d48f95c1294c6d97d5005f54a0bcfc94b6",
+            },
+            @"progress": @{
+                @"frameCount": @45,
+                @"canvas": @240,
+                @"crop": NSStringFromRect(
+                    NSMakeRect(48, 48, 144, 144)
+                ),
+                @"sha256":
+                    @"12234f1e600f160b07bc7a963b83a9ed58e396ba4a540c073979dae578811537",
+            },
+            @"wait": @{
+                @"frameCount": @44,
+                @"canvas": @240,
+                @"crop": NSStringFromRect(
+                    NSMakeRect(56, 56, 128, 128)
+                ),
+                @"sha256":
+                    @"099698b0f63752ffd82f049e82deb292a78f4b4f9225eb068a6ea23a14e6a7fa",
+            },
+            @"size_hor": @{
+                @"frameCount": @127,
+                @"canvas": @256,
+                @"crop": NSStringFromRect(
+                    NSMakeRect(64, 48, 128, 112)
+                ),
+                @"sha256":
+                    @"8e5eca64b621064c751990ad04ed4d833bd9fde874903d89188334f11a3a6a2f",
+            },
+            @"size_ver": @{
+                @"frameCount": @164,
+                @"canvas": @256,
+                @"crop": NSStringFromRect(
+                    NSMakeRect(80, 64, 128, 128)
+                ),
+                @"sha256":
+                    @"75a878ef3757873e9b02d2777271d428379272ea8a8d6c6399650c9cdedf4ed8",
+            },
+        };
+    });
+    return metadata[role];
+}
+
 @interface CPCursorAssetSequence ()
 
 @property(nonatomic, copy, readwrite) NSString *role;
@@ -46,8 +122,9 @@ static NSString *const CPAssetErrorDomain =
 + (nullable instancetype)sequenceForRole:(NSString *)role
                   optimizedForSmoothness:(BOOL)optimizedForSmoothness
                                    error:(NSError **)error {
-    if (![role isEqualToString:@"default"] &&
-        ![role isEqualToString:@"text"]) {
+    NSDictionary<NSString *, id> *metadata =
+        CPAssetMetadataForRole(role);
+    if (metadata == nil) {
         if (error != NULL) {
             *error = [self errorWithCode:1
                              description:[NSString stringWithFormat:
@@ -90,6 +167,7 @@ static NSString *const CPAssetErrorDomain =
     __block NSInteger sourceHotspotX = 0;
     __block NSInteger sourceHotspotY = 0;
     __block NSInteger sourceDelayMilliseconds = 0;
+    __block NSInteger sourceTotalDurationMilliseconds = 0;
     __block NSError *parseError = nil;
     [configuration enumerateLinesUsingBlock:
         ^(NSString *line, BOOL *stop) {
@@ -140,14 +218,14 @@ static NSString *const CPAssetErrorDomain =
                 sourceDelayMilliseconds = delay;
             } else if (canvas != sourceCanvasSize ||
                        hotspotX != sourceHotspotX ||
-                       hotspotY != sourceHotspotY ||
-                       delay != sourceDelayMilliseconds) {
+                       hotspotY != sourceHotspotY) {
                 parseError = [self errorWithCode:6
                                       description:
-                    @"原始动画的尺寸、热点或帧时间不一致。"];
+                    @"原始动画的尺寸或热点不一致。"];
                 *stop = YES;
                 return;
             }
+            sourceTotalDurationMilliseconds += delay;
 
             NSString *filename = fields[3].lastPathComponent;
             NSURL *frameURL =
@@ -173,16 +251,18 @@ static NSString *const CPAssetErrorDomain =
     }
 
     NSUInteger expectedFrameCount =
-        [role isEqualToString:@"default"] ? 130 : 140;
-    if (sourceCanvasSize != 240 ||
+        [metadata[@"frameCount"] unsignedIntegerValue];
+    NSInteger expectedCanvas = [metadata[@"canvas"] integerValue];
+    if (sourceCanvasSize != expectedCanvas ||
         sourceDelayMilliseconds != 33 ||
         frameURLs.count != expectedFrameCount) {
         if (error != NULL) {
             *error = [self errorWithCode:9
                              description:[NSString stringWithFormat:
-                @"%@ 原作素材校验失败（应为 %lu 张 240px/33ms 原帧）。",
+                @"%@ 原作素材校验失败（应为 %lu 张 %ldpx/约 33ms 原帧）。",
                 role,
-                (unsigned long)expectedFrameCount]];
+                (unsigned long)expectedFrameCount,
+                (long)expectedCanvas]];
         }
         return nil;
     }
@@ -237,9 +317,7 @@ static NSString *const CPAssetErrorDomain =
          index++) {
         [assetSHA256 appendFormat:@"%02x", digest[index]];
     }
-    NSString *expectedSHA256 = [role isEqualToString:@"default"]
-        ? @"407827d370a0df8ba228f98ce7f3def8a281d3fe902b001504107dca4819d2a4"
-        : @"9833bee08c269031d25fceadbb96a9058d3139a50185a3a06fe24e6837560453";
+    NSString *expectedSHA256 = metadata[@"sha256"];
     if (![assetSHA256 isEqualToString:expectedSHA256]) {
         if (error != NULL) {
             *error = [self errorWithCode:18
@@ -259,7 +337,7 @@ static NSString *const CPAssetErrorDomain =
     sequence.sourceFrameDuration =
         sourceDelayMilliseconds / 1000.0;
     sequence.totalDuration =
-        sequence.sourceFrameCount * sequence.sourceFrameDuration;
+        sourceTotalDurationMilliseconds / 1000.0;
     sequence.registeredFrameDuration =
         sequence.totalDuration / sequence.registeredFrameCount;
     sequence.motionOptimized = optimizedForSmoothness;
@@ -267,13 +345,12 @@ static NSString *const CPAssetErrorDomain =
     // Crop only fully transparent padding. At standard scale these rectangles
     // map 2 source pixels to 1 macOS point, so the 2x representation contains
     // the original artist pixels without resampling.
-    if ([role isEqualToString:@"default"]) {
-        sequence.sourceCropRect = NSMakeRect(48, 48, 128, 120);
-        sequence.logicalSize = NSMakeSize(64, 60);
-    } else {
-        sequence.sourceCropRect = NSMakeRect(32, 48, 128, 104);
-        sequence.logicalSize = NSMakeSize(64, 52);
-    }
+    sequence.sourceCropRect =
+        NSRectFromString(metadata[@"crop"]);
+    sequence.logicalSize = NSMakeSize(
+        NSWidth(sequence.sourceCropRect) / 2.0,
+        NSHeight(sequence.sourceCropRect) / 2.0
+    );
     sequence.logicalHotspot = NSMakePoint(
         (sourceHotspotX - NSMinX(sequence.sourceCropRect)) / 2.0,
         (sourceHotspotY - NSMinY(sequence.sourceCropRect)) / 2.0
@@ -281,22 +358,21 @@ static NSString *const CPAssetErrorDomain =
 
     if (optimizedForSmoothness) {
         // Anchor the first source frame, then use rounded equal-time samples.
-        // Compared with the old floor grid this keeps every source-frame
-        // interval at 5/6 frames and reduces full-sequence pixel
-        // reconstruction error by 11.8% (Arrow) and 13.6% (IBeam).
-        // The source-byte hash above keeps the precomputed grid safe.
-        sequence.selectedSourceFrameNumbers =
-            [role isEqualToString:@"default"]
-                ? @[
-                    @1, @6, @12, @17, @23, @28, @34, @39,
-                    @44, @50, @55, @61, @66, @71, @77, @82,
-                    @88, @93, @99, @104, @109, @115, @120, @126,
-                ]
-                : @[
-                    @1, @7, @13, @19, @24, @30, @36, @42,
-                    @48, @54, @59, @65, @71, @77, @83, @89,
-                    @94, @100, @106, @112, @118, @124, @129, @135,
-                ];
+        // This keeps each original cycle intact while distributing the
+        // WindowServer's 24 available frames as evenly as possible.
+        NSMutableArray<NSNumber *> *selected =
+            [NSMutableArray array];
+        for (NSUInteger index = 0;
+             index < sequence.registeredFrameCount;
+             index++) {
+            double sourcePosition =
+                (double)index * sequence.sourceFrameCount /
+                sequence.registeredFrameCount;
+            NSUInteger sourceIndex =
+                (NSUInteger)floor(sourcePosition + 0.5);
+            [selected addObject:@(sourceIndex + 1)];
+        }
+        sequence.selectedSourceFrameNumbers = selected.copy;
     } else {
         NSMutableArray<NSNumber *> *selected = [NSMutableArray array];
         for (NSUInteger index = 0;

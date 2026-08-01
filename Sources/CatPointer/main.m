@@ -143,7 +143,7 @@ static NSString *CPCanonicalAnimationProfile(NSString *profile) {
 static CGFloat CPFramesPerSecondForProfile(NSString *profile) {
     NSString *canonical = CPCanonicalAnimationProfile(profile);
     if ([canonical isEqualToString:CPAnimationProfileSlow]) {
-        return 0;
+        return 8.0;
     }
     if ([canonical isEqualToString:CPAnimationProfileMedium]) {
         return 12.0;
@@ -1172,7 +1172,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     title.font = [NSFont systemFontOfSize:20 weight:NSFontWeightSemibold];
 
     NSTextField *subtitle = [NSTextField labelWithString:
-        @"原作猫标 · 普通指针与文字输入指针同步生效"];
+        @"原作猫标 · 7 类常用指针动作同步生效"];
     subtitle.textColor = NSColor.secondaryLabelColor;
     subtitle.font = [NSFont systemFontOfSize:12];
 
@@ -1347,7 +1347,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
                            action:@selector(verifyPointer:)];
     _settingsVerifyButton.bezelStyle = NSBezelStyleRounded;
     _settingsVerifyButton.toolTip =
-        @"检查两类指针、五档尺寸、四档速度和安全恢复，通常需要几秒。";
+        @"检查 7 类指针、五档尺寸、四档速度和安全恢复，通常需要几秒。";
 
     _settingsResetButton =
         [NSButton buttonWithTitle:@"恢复默认"
@@ -1747,7 +1747,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
         ? @"启用猫标后可进行完整检查。"
         : (_hasPendingSettings
             ? @"当前设置应用后即可检查。"
-            : @"检查两类指针、五档尺寸、四档速度和安全恢复，通常需要几秒。");
+            : @"检查 7 类指针、五档尺寸、四档速度和安全恢复，通常需要几秒。");
     BOOL usesDefaults =
         fabs(scale - 1.0) < 0.001 &&
         [profile isEqualToString:CPAnimationProfileExtreme];
@@ -2242,7 +2242,7 @@ static BOOL CPConfigurationRollbackSucceeded(NSError *error) {
     alert.messageText = @"猫标 CatPointer";
     alert.informativeText =
         @"HappyCadogt 原作“猫标”的原生 macOS 移植："
-        @"小猫会藏进箭头，也会融进文字输入指针。"
+        @"支持普通、文字、链接、后台运行、忙碌和横纵拉伸动画。"
         @"图像全部来自原作帧，没有重新手绘。\n\n"
         @"动画由 macOS 播放，最高使用系统支持的 24 帧，"
         @"不会监听点击、拖拽或键盘。尺寸可以滑动调节，"

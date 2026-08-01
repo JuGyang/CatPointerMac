@@ -1,7 +1,7 @@
 # 猫标 CatPointer for macOS
 
 <p align="center">
-  <img src="Validation/catpointer-demo.gif" width="560" alt="猫标普通指针和文字指针动画预览">
+  <img src="Validation/catpointer-demo.gif" width="720" alt="猫标全部 7 类指针动作动画预览">
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 ## 主要特点
 
-- 在 WindowServer 层替换 macOS 普通箭头和文字输入光标。
+- 在 WindowServer 层替换 7 类常用 macOS 光标：普通、文字、链接、后台运行、忙碌、横向拉伸与纵向拉伸。
 - 使用 HappyCadogt 创作的原始猫咪动画，不以近似图形重新绘制。
 - 提供 5 档指针尺寸和 4 档易懂的动画速度：慢、适中、快速、极致。
 - 设置操作立即反馈，同时避免无意义地重复重建系统光标。
@@ -45,7 +45,7 @@ CatPointer 使用 macOS 未公开的光标注册接口。未来的 macOS 更新�
 
 ### 推荐：DMG
 
-1. 下载 `CatPointer-v1.5.3-macOS-arm64.dmg`。
+1. 下载 `CatPointer-v1.6.1-macOS-arm64.dmg`。
 2. 打开磁盘映像。
 3. 将 **CatPointer** 拖入 **Applications（应用程序）**。
 4. 从应用程序文件夹打开 CatPointer。
@@ -54,16 +54,16 @@ CatPointer 使用 macOS 未公开的光标注册接口。未来的 macOS 更新�
 
 ### 备用：ZIP
 
-下载 `CatPointer-v1.5.3-macOS-arm64.zip`，解压后将 `CatPointer.app` 移入应用程序文件夹。ZIP 与 DMG 中的应用完全相同，主要用于自动化下载或偏好压缩包的用户。
+下载 `CatPointer-v1.6.1-macOS-arm64.zip`，解压后将 `CatPointer.app` 移入应用程序文件夹。ZIP 与 DMG 中的应用完全相同，主要用于自动化下载或偏好压缩包的用户。
 
 Release 同时提供 `SHA256SUMS.txt`。可用以下命令校验文件：
 
 ```bash
-shasum -a 256 CatPointer-v1.5.3-macOS-arm64.dmg
+shasum -a 256 CatPointer-v1.6.1-macOS-arm64.dmg
 ```
 
 测试环境、DMG 安装界面覆盖与安装包校验值见
-[v1.5.3 验证报告](Validation/TEST_REPORT-v1.5.3.md)。
+[v1.6.1 验证报告](Validation/TEST_REPORT-v1.6.1.md)。
 
 ## 使用方法
 
@@ -83,12 +83,12 @@ CatPointer 启动后会立即安装动画指针。通过菜单栏图标可以：
 
 | 速度 | 播放方式 |
 | --- | --- |
-| 慢 | 保留原动画节奏 |
+| 慢 | 8 FPS |
 | 适中 | 12 FPS |
 | 快速 | 20 FPS |
 | 极致 | 30 FPS |
 
-尺寸提供 80%、90%、100%、110%、120% 五档。固定缓存只保存普通箭头和文字光标的五种尺寸，约占 16.7 MiB。Apple Silicon 实测空闲 CPU 使用率显示为 0.0%。
+尺寸提供 80%、90%、100%、110%、120% 五档。应用会在固定上限内预渲染 7 类动作的常用尺寸，使滑杆提交保持迅速；动画播放期间不需要应用逐帧工作。Apple Silicon 实测空闲 CPU 使用率显示为 0.0%。
 
 ## 恢复系统指针
 
@@ -120,8 +120,8 @@ make package
 发布文件位于 `dist/`：
 
 - `CatPointer.app`
-- `CatPointer-v1.5.3-macOS-<架构>.dmg`
-- `CatPointer-v1.5.3-macOS-<架构>.zip`
+- `CatPointer-v1.6.1-macOS-<架构>.dmg`
+- `CatPointer-v1.6.1-macOS-<架构>.zip`
 - `SHA256SUMS.txt`
 
 打包后可运行完整自检：
@@ -130,7 +130,7 @@ make package
 dist/CatPointer.app/Contents/MacOS/CatPointer --self-test
 ```
 
-运行前请先退出其他 CatPointer 实例。自检会临时注册两类光标，检查全部动画帧、速度档位与恢复流程，并在结束前恢复原系统指针。
+运行前请先退出其他 CatPointer 实例。自检会临时注册全部 7 类动作，检查动画帧、五档尺寸、四档速度与恢复流程，并在结束前恢复原系统指针。
 
 `make package` 会短暂打开 Finder 以保存 DMG 窗口布局，因此需要在已经登录的
 macOS 桌面会话中执行；普通编译和测试不依赖 Finder。
